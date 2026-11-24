@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizer Slides</title>
+<!-- Office JavaScript library: lets PowerPoint save the choice in the slide and report Slide Show. The page also works without it. -->
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+:root { --brand: #00A2D7; --brand-dark: #0081AD; --navy: #0B3D5C; --ink: #1B2A35; --muted: #5B6B78;
+        --panel: #CFE6F0; --soft: #EAF5FA; --bg: #F4F8FB; --line: #C9D9E3; --bad: #E5484D; --bad-soft: #FDECEC; --amber: #F5A524; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: var(--ink);
+             font: 15px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+.btn { border: 1px solid var(--brand); background: var(--brand); color: #fff; border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 600; }
+.btn:hover:not(:disabled) { background: var(--brand-dark); border-color: var(--brand-dark); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.alt { background: #fff; color: var(--navy); border-color: var(--line); font-weight: 500; }
+.btn.alt:hover:not(:disabled) { background: var(--soft); }
+.btn.small { padding: 3px 10px; font-size: 13px; }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+#app { display: flex; flex-direction: column; height: 100%; }
+#bar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 4px 6px; background: var(--soft); border-bottom: 1px solid var(--line); }
+#bar .zoom { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; font-size: 13px; color: var(--muted); }
+#bar .diag { margin-left: auto; font-size: 12px; color: var(--muted); }
+#bar .what { font-size: 13px; color: var(--navy); font-weight: 600; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#stage { position: relative; flex: 1 1 auto; overflow: hidden; background: #fff; }
+#frame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; transform-origin: 0 0; background: #fff; }
+
+.cover { position: absolute; inset: 0; display: flex; padding: 14px; background: var(--bg); overflow: auto; }
+.card { margin: auto; background: #fff; border: 1px solid var(--line); border-top: 4px solid var(--brand); border-right: 4px solid var(--brand);
+        border-radius: 10px; padding: 14px 18px; width: min(720px, 100%); }
+.card h1 { margin: 0 0 2px; font-size: 20px; color: var(--navy); }
+.card p { margin: 6px 0; }
+.muted { color: var(--muted); font-size: 13px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.tabs { display: flex; gap: 4px; margin: 10px 0 2px; border-bottom: 2px solid var(--panel); }
+.tabs button { border: 0; background: none; padding: 6px 12px; cursor: pointer; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.tabs button[aria-selected=true] { color: var(--navy); border-bottom-color: var(--brand); }
+label.f { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--muted); min-width: 0; }
+label.f select, label.f input { color: var(--ink); font-size: 15px; }
+select, input[type=text], input[type=url], input[type=number] { border: 1px solid #9DB3C1; border-radius: 6px; padding: 5px 8px; background: #fff; max-width: 100%; }
+.pick { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 10px; }
+#params { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 8px; }
+#params label.f { max-width: 100%; }
+#params input[type=number] { width: 7em; }
+#params .bad { border-color: var(--bad); background: var(--bad-soft); }
+.pvwrap { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; height: min(38vh, 300px); min-height: 110px; background: #fff; position: relative; }
+.pvwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.pvwrap .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; padding: 10px; text-align: center; }
+#linkOut { font-family: Consolas, Menlo, monospace; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 6px; }
+#urlIn { flex: 1 1 260px; min-width: 0; }
+.err { color: var(--bad); background: var(--bad-soft); border-radius: 8px; padding: 6px 10px; margin-top: 8px; }
+.err:empty { display: none; }
+@media (max-width: 640px) {
+  #bar { flex-wrap: nowrap; overflow-x: auto; }
+  #bar .diag, #bar .zoom .lbl, #bar .what { display: none; }
+  #bar .btn.small { white-space: nowrap; }
+  .pick { grid-template-columns: 1fr; }
+}
+@media (max-height: 300px) { .cover { padding: 6px; } .card { padding: 10px 14px; } .card h1 { font-size: 17px; } }
+body.presenting #bar { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar" role="toolbar" aria-label="Viewer tools" hidden>
+    <button class="btn alt small" id="changeBtn" type="button">Change</button>
+    <button class="btn alt small" id="reloadBtn" type="button">Reload</button>
+    <span class="zoom"><span class="lbl">Zoom</span>
+      <button class="btn alt small" id="zoomOut" type="button" aria-label="Zoom out">&minus;</button>
+      <span id="zoomVal" aria-live="polite">100%</span>
+      <button class="btn alt small" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+    </span>
+    <button class="btn alt small" id="openBtn" type="button">Open in browser</button>
+    <span class="what" id="what"></span>
+    <span class="diag" id="diagBar"></span>
+  </div>
+
+  <div id="stage">
+    <iframe id="frame" title="Interactive content" allow="clipboard-write; fullscreen" hidden></iframe>
+
+    <div class="cover" id="setup" hidden>
+      <div class="card">
+        <h1>Visualizer Slides</h1>
+        <p class="muted" style="margin:0">Show a live, clickable figure on this slide.</p>
+        <div class="tabs" role="tablist">
+          <button role="tab" id="tabPick" aria-selected="true" aria-controls="panePick" type="button">Choose a Visualizer</button>
+          <button role="tab" id="tabLink" aria-selected="false" aria-controls="paneLink" type="button">Paste a link</button>
+        </div>
+
+        <div id="panePick" role="tabpanel" aria-labelledby="tabPick">
+          <div class="pick">
+            <label class="f">Visualizer <select id="appSel"><option value="">Finding the Visualizers…</option></select></label>
+            <label class="f">Figure <select id="widSel" disabled><option value="">Choose a Visualizer first</option></select></label>
+          </div>
+          <div id="params"></div>
+          <div class="row">
+            <button class="btn" id="useBtn" type="button" disabled>Show on this slide</button>
+            <button class="btn alt small" id="cancelBtn" type="button" hidden>Cancel</button>
+          </div>
+          <div class="err" id="pickErr" role="alert"></div>
+          <div class="pvwrap"><div class="ph" id="pvMsg">A preview appears here.</div><iframe id="pv" title="Preview" tabindex="-1" hidden></iframe></div>
+          <div id="linkOut"></div>
+        </div>
+
+        <div id="paneLink" role="tabpanel" aria-labelledby="tabLink" hidden>
+          <label for="urlIn" class="muted">Any page that starts with https:// (a Visualizer widget link, a whole Visualizer, or another site)</label>
+          <div class="row">
+            <input type="url" id="urlIn" placeholder="https://..." spellcheck="false" autocomplete="off">
+            <button class="btn" id="showBtn" type="button">Show</button>
+          </div>
+          <div class="row"><button class="btn alt small" id="homeBtn" type="button">Use the Visualizers home page</button>
+            <button class="btn alt small" id="cancelBtn2" type="button" hidden>Cancel</button></div>
+          <div class="err" id="setupErr" role="alert"></div>
+        </div>
+        <p class="muted" id="diagSetup" style="margin-top:10px"></p>
+      </div>
+    </div>
+
+    <div class="cover" id="msg" hidden>
+      <div class="card">
+        <h1 id="msgTitle">Can't show this page</h1>
+        <p id="msgText"></p>
+        <div class="row" id="msgBtns">
+          <button class="btn" id="retryBtn" type="button">Try again</button>
+          <button class="btn alt" id="msgOpenBtn" type="button">Open in browser</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var VERSION = '0.3';
+  /* where the Visualizers live: a GitHub repository (read for its file list) and the website that serves it.
+     Visualizer Slides has its own site (https://asammoud-rh.github.io/Slide_Widgets/); the apps live on another one. */
+  var OWNER = 'asammoud-RH', REPO = 'Communication_Networks', FOLDER = 'Visualizers';
+  var SITE = 'https://asammoud-rh.github.io/Communication_Networks/', SITE_PATH = '/Communication_Networks/';
+  var LOAD_TIMEOUT_MS = 20000, READY_TIMEOUT_MS = 15000, LIST_TIMEOUT_MS = 12000, LIST_MAX_AGE_MIN = 60;
+  var IN_POWERPOINT = /[?&#]_host_Info=/i.test(location.href);   // Office adds this to the add-in's address
+
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { url: '', zoom: 100, title: '', inOffice: false, presenting: false, host: 'browser', platform: '', officeLoaded: false,
+                loadTimer: null, apps: null, lists: {}, sw: false };
+
+  /* ---------- saving: in the slide inside PowerPoint, in the browser otherwise ---------- */
+  var mem = {
+    get: function (k) { try { return JSON.parse(localStorage.getItem('vzslides.' + k)); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem('vzslides.' + k, JSON.stringify(v)); } catch (e) { /* blocked */ } }
+  };
+  function readSaved() {
+    if (state.inOffice) {
+      try { var s = Office.context.document.settings; return { url: s.get('url') || '', zoom: s.get('zoom') || 100, title: s.get('title') || '' }; }
+      catch (e) { return { url: '', zoom: 100, title: '' }; }
+    }
+    return { url: mem.get('url') || '', zoom: mem.get('zoom') || 100, title: mem.get('title') || '' };
+  }
+  function save() {
+    if (state.inOffice) {
+      try { var s = Office.context.document.settings; s.set('url', state.url); s.set('zoom', state.zoom); s.set('title', state.title); s.saveAsync(function () {}); } catch (e) { /* ignore */ }
+      return;
+    }
+    mem.set('url', state.url); mem.set('zoom', state.zoom); mem.set('title', state.title);
+  }
+
+  /* ---------- links ---------- */
+  function servedLocally() { return /^(localhost|127\.0\.0\.1)$/.test(location.hostname); }
+  function checkUrl(u) {
+    u = String(u || '').trim();
+    if (!u) return { error: 'Paste a link first.' };
+    var p; try { p = new URL(u, location.href); } catch (e) { return { error: 'That is not a complete link. It should start with https://' }; }
+    if (!/^https?:/.test(u) && !servedLocally()) return { error: 'That is not a complete link. It should start with https://' };
+    if (p.protocol === 'https:' || (p.protocol === 'http:' && servedLocally())) return { url: p.href };
+    return { error: 'The link must start with https:// (a secure page).' };
+  }
+  function siteBase() {   // the Visualizers website; on the same github.io host (or a local test server) use the same host
+    if (/\.github\.io$/i.test(location.hostname) || servedLocally()) return location.origin + SITE_PATH;
+    return SITE;
+  }
+
+
+  /* ---------- finding the Visualizers (the same way the website's home page does) ---------- */
+  function listApps() {
+    var cached = mem.get('apps');
+    if (cached && Date.now() - cached.t < LIST_MAX_AGE_MIN * 60000) return Promise.resolve(cached.apps);
+    var q = new URLSearchParams(location.search), treeUrl = q.get('tree') && servedLocally() ? q.get('tree')
+      : 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/git/trees/HEAD?recursive=1';
+    return fetch(treeUrl).then(function (r) { if (!r.ok) throw new Error('GitHub answered ' + r.status); return r.json(); }).then(appsFromTree)
+      .catch(function (e) {
+      if (cached) return cached.apps;
+      var home = null;   // the home page (same site) keeps GitHub's list as vizhome.tree.<owner>/<repo>
+      try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^vizhome\.tree\./i.test(k)) home = JSON.parse(localStorage.getItem(k)); } } catch (er) { home = null; }
+      if (home && home.files) return appsFromTree({ tree: home.files.map(function (f) { return { path: f.path, type: 'blob' }; }) });
+      throw e;
+    });
+  }
+  function appsFromTree(d) {
+    var by = {}, readme = {};
+    (d.tree || []).forEach(function (f) {
+      if (f.type !== 'blob') return;
+      var parts = f.path.split('/');
+      if (parts.length !== 3 || parts[0] !== FOLDER) return;
+      if (/^readme\.md$/i.test(parts[2])) readme[parts[1]] = f.path;
+      if (!/\.html?$/i.test(parts[2]) || /^index\.html?$/i.test(parts[2])) return;
+      if (!by[parts[1]]) by[parts[1]] = f.path;
+    });
+    var apps = Object.keys(by).map(function (k) {
+      var file = by[k].split('/')[2].replace(/\.html?$/i, '');
+      var title = file.replace(/[-_]+/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+      return { folder: k, path: by[k], title: title, readme: readme[k] || null };
+    });
+    return Promise.all(apps.map(function (a) {   // the app's own name: the first line of its README, "# <Topic> Visualizer"
+      if (!a.readme) return null;
+      var p = a.readme.split('/').map(encodeURIComponent).join('/');
+      var get = function (u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }); };
+      return get('https://raw.githubusercontent.com/' + OWNER + '/' + REPO + '/HEAD/' + p).catch(function () { return get(siteBase() + p); })
+        .then(function (t) { var m = /^#\s+(.+)$/m.exec(t || ''); if (m) a.title = m[1].trim(); }, function () {});
+    })).then(function () {
+      apps.sort(function (a, b) { return a.title < b.title ? -1 : 1; });
+      mem.set('apps', { t: Date.now(), apps: apps });
+      return apps;
+    });
+  }
+  function appUrl(app) { return siteBase() + app.path.split('/').map(encodeURIComponent).join('/'); }
+  function widgetList(app) {   // asks the app itself for its widgets (?widget=list&format=data)
+    if (state.lists[app.path]) return Promise.resolve(state.lists[app.path]);
+    return fetch(appUrl(app)).then(function (r) { return r.ok ? r.text() : ''; }, function () { return null; }).then(function (src) {
+      if (src !== null && src.indexOf('VZ_WIDGETS') < 0) return null;   // an app without slide widgets: nothing to ask
+      return askList(app);
+    });
+  }
+  function askList(app) {
+    return new Promise(function (resolve) {
+      var f = document.createElement('iframe'), done = false;
+      f.style.cssText = 'position:absolute;width:10px;height:10px;left:-9999px;top:0;border:0';
+      f.title = 'Loading the figure list'; f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+      function finish(v) { if (done) return; done = true; window.removeEventListener('message', onMsg); if (f.parentNode) f.parentNode.removeChild(f); resolve(v); }
+      function onMsg(ev) { if (ev.source === f.contentWindow && ev.data && ev.data.type === 'vz-widget-list') { state.lists[app.path] = ev.data; finish(ev.data); } }
+      window.addEventListener('message', onMsg);
+      f.src = appUrl(app) + '?widget=list&format=data';
+      document.body.appendChild(f);
+      setTimeout(function () { finish(null); }, LIST_TIMEOUT_MS);
+    });
+  }
+
+  /* ---------- the picker ---------- */
+  function fillApps() {
+    var sel = $('appSel');
+    listApps().then(function (apps) {
+      state.apps = apps;
+      sel.innerHTML = '<option value="">Choose…</option>' + apps.map(function (a, i) { return '<option value="' + i + '">' + esc(a.title) + '</option>'; }).join('');
+      var last = mem.get('lastApp');
+      if (last !== null && apps[last]) { sel.value = String(last); pickApp(); }
+    }).catch(function () {
+      sel.innerHTML = '<option value="">Could not list the Visualizers</option>';
+      $('pickErr').textContent = 'The list of Visualizers could not be loaded (no internet, or GitHub is busy). Use "Paste a link" instead.';
+    });
+  }
+  function pickApp() {
+    var app = state.apps && state.apps[+$('appSel').value], ws = $('widSel');
+    $('params').innerHTML = ''; showPreview(null); $('useBtn').disabled = true; $('pickErr').textContent = '';
+    if (!app) { ws.disabled = true; ws.innerHTML = '<option value="">Choose a Visualizer first</option>'; return; }
+    mem.set('lastApp', +$('appSel').value);
+    ws.disabled = true; ws.innerHTML = '<option value="">Loading its figures…</option>';
+    widgetList(app).then(function (data) {
+      if (+$('appSel').value !== state.apps.indexOf(app)) return;
+      var html = '<option value="__app">The whole Visualizer</option>';
+      if (data && data.widgets.length) {
+        var groups = [], by = {};
+        data.widgets.forEach(function (w, i) { if (!by[w.group]) { by[w.group] = []; groups.push(w.group); } by[w.group].push(i); });
+        html = groups.map(function (g) { return '<optgroup label="' + esc(g) + '">' + by[g].map(function (i) { return '<option value="' + i + '">' + esc(data.widgets[i].title) + '</option>'; }).join('') + '</optgroup>'; }).join('') + html;
+      } else {
+        $('pickErr').textContent = 'This Visualizer has no slide widgets yet. You can still show the whole Visualizer.';
+      }
+      ws.innerHTML = html; ws.disabled = false; pickWidget();
+    });
+  }
+  function current() {
+    var app = state.apps && state.apps[+$('appSel').value], v = $('widSel').value;
+    if (!app || v === '') return null;
+    if (v === '__app') return { app: app, widget: null };
+    var data = state.lists[app.path];
+    return data ? { app: app, widget: data.widgets[+v], data: data } : null;
+  }
+  function pickWidget() {
+    var c = current(), box = $('params');
+    box.innerHTML = '';
+    if (c && c.widget) c.widget.params.forEach(function (p) {
+      var id = 'p_' + p.key, lab = document.createElement('label'); lab.className = 'f';
+      lab.appendChild(document.createTextNode(p.label));
+      var inp;
+      if (p.options) {
+        inp = document.createElement('select');
+        p.options.forEach(function (o) { var op = document.createElement('option'); op.value = o.value; op.textContent = o.label || o.value; inp.appendChild(op); });
+        inp.value = String(p['default']);
+      } else {
+        inp = document.createElement('input'); inp.type = p.type === 'text' ? 'text' : 'number';
+        if (inp.type === 'number') inp.step = p.integer === false ? 'any' : '1';
+        if (p.min !== undefined && p.min !== null) inp.min = p.min;
+        if (p.max !== undefined && p.max !== null) inp.max = p.max;
+        inp.value = p['default'];
+      }
+      inp.id = id; inp.setAttribute('data-key', p.key);
+      inp.addEventListener('change', previewSoon); inp.addEventListener('input', previewSoon);
+      lab.appendChild(inp); box.appendChild(lab);
+    });
+    previewNow();
+  }
+  function builtLink() {   // the link for the current choice, with only the values that differ from the defaults
+    var c = current(); if (!c) return null;
+    var base = appUrl(c.app);
+    if (!c.widget) return { url: base, title: c.app.title };
+    var parts = ['widget=' + encodeURIComponent(c.widget.name)], bad = false;
+    c.widget.params.forEach(function (p) {
+      var e = $('p_' + p.key); if (!e) return;
+      var v = String(e.value).trim(), ok = true;
+      if (!p.options) {
+        if (v === '') ok = !!p.blank;
+        else if (p.type === 'text') ok = !p.pattern || new RegExp('^(?:' + p.pattern + ')$').test(v);
+        else { var n = Number(v); ok = isFinite(n) && (p.integer === false || Math.round(n) === n) && (p.min === undefined || p.min === null || n >= p.min) && (p.max === undefined || p.max === null || n <= p.max); }
+      }
+      if (v === String(p['default'])) ok = true;
+      e.classList.toggle('bad', !ok); if (!ok) bad = true;
+      if (ok && v !== String(p['default'])) parts.push(encodeURIComponent(p.key) + '=' + encodeURIComponent(v));
+    });
+    return { url: base + '?' + parts.join('&'), title: c.widget.title, bad: bad };
+  }
+  var pvTimer = null;
+  function previewSoon() { clearTimeout(pvTimer); pvTimer = setTimeout(previewNow, 450); }
+  function previewNow() {
+    var L = builtLink();
+    $('useBtn').disabled = !L || L.bad;
+    $('linkOut').textContent = L ? L.url : '';
+    if (L && L.bad) $('pickErr').textContent = 'A starting value is out of range (marked in red).';
+    else if ($('pickErr').textContent.indexOf('starting value') >= 0) $('pickErr').textContent = '';
+    showPreview(L && !L.bad ? L.url : null);
+  }
+  function showPreview(u) {
+    var f = $('pv');
+    if (!u) { f.hidden = true; f.removeAttribute('src'); $('pvMsg').hidden = false; return; }
+    $('pvMsg').hidden = true; f.hidden = false; if (f.getAttribute('src') !== u) f.src = u;
+  }
+
+  /* ---------- what is on screen ---------- */
+  function showTab(which) {
+    var pick = which === 'pick';
+    $('tabPick').setAttribute('aria-selected', String(pick)); $('tabLink').setAttribute('aria-selected', String(!pick));
+    $('tabPick').tabIndex = pick ? 0 : -1; $('tabLink').tabIndex = pick ? -1 : 0;
+    $('panePick').hidden = !pick; $('paneLink').hidden = pick;
+  }
+  function showSetup(withCancel) {
+    stopTimer();
+    $('frame').hidden = true; $('msg').hidden = true; $('bar').hidden = true;
+    $('setup').hidden = false;
+    $('urlIn').value = state.url || '';
+    $('cancelBtn').hidden = $('cancelBtn2').hidden = !withCancel;
+    $('setupErr').textContent = '';
+    if (!state.apps) fillApps();
+    else previewNow();
+  }
+  function hideSetupPreview() { showPreview(null); }
+  function showMessage(title, text) { stopTimer(); $('msgTitle').textContent = title; $('msgText').textContent = text; $('msg').hidden = false; }
+  function applyZoom() {
+    var s = state.zoom / 100, f = $('frame');
+    f.style.width = (100 / s) + '%'; f.style.height = (100 / s) + '%';
+    f.style.transform = s === 1 ? '' : 'scale(' + s + ')';
+    $('zoomVal').textContent = state.zoom + '%';
+  }
+  function stopTimer() { if (state.loadTimer) { clearTimeout(state.loadTimer); state.loadTimer = null; } }
+  function isWidget(u) { return /[?&]widget=(?!list(&|$))/.test(u); }
+  function load() {
+    var f = $('frame'), widget = isWidget(state.url);
+    f.hidden = false;
+    stopTimer();
+    state.ready = false;
+    state.loadTimer = setTimeout(function () {
+      if (widget) showMessage('This figure did not start', 'The page loaded but the figure did not answer. The site may be down, the link may be wrong, or this Visualizer may be an older version without slide widgets. You can try again or open it in a browser.');
+      else showMessage('Still loading', 'The page is taking a long time. The site may be down, or it may not allow itself to be shown inside another page. You can try again or open it in a browser.');
+    }, widget ? READY_TIMEOUT_MS : LOAD_TIMEOUT_MS);
+    f.onload = function () { if (!widget) stopTimer(); tellView(); };
+    f.src = state.url;
+  }
+  window.addEventListener('message', function (ev) {   // a widget says it has started
+    if (ev.source === $('frame').contentWindow && ev.data && ev.data.type === 'vz-widget-ready') { state.ready = true; stopTimer(); tellView(); }
+  });
+  function showPage(keep) {
+    if (keep === true && $('frame').getAttribute('src') === state.url && !$('frame').hidden) {   // Cancel: the figure is still there, as it was
+      $('setup').hidden = true; $('bar').hidden = false; focusBar(); return;
+    }
+    $('setup').hidden = true; $('msg').hidden = true; $('bar').hidden = false; $('msgBtns').hidden = false;
+    hideSetupPreview();
+    $('what').textContent = state.title || '';
+    applyZoom();
+    if (navigator.onLine) { load(); return; }
+    offlineCopy(state.url).then(function (has) {   // no internet: use the copy saved the last time it was shown, if there is one
+      if (has) load();
+      else showMessage('No internet connection', 'This slide shows a live web page, so it needs the internet. Connect, then choose Try again. (For a room without internet, use the ready-made slides in the Slide Widgets slide library.)');
+    });
+    focusBar();
+  }
+  function focusBar() { if (!state.presenting) { try { $('changeBtn').focus(); } catch (e) { /* ignore */ } } }
+  function offlineCopy(u) {
+    if (!window.caches || !('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return Promise.resolve(false);
+    return caches.match(u, { ignoreSearch: true }).then(function (r) { return !!r; }, function () { return false; });
+  }
+  function tellView() {
+    try { $('frame').contentWindow.postMessage({ type: 'vz-view', presenting: state.presenting }, new URL(state.url, location.href).origin); } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- actions ---------- */
+  function use(u, title) {
+    var c = checkUrl(u);
+    if (c.error) { $('setupErr').textContent = c.error; showTab('link'); return; }
+    state.url = c.url; state.title = title || ''; save(); showPage();
+  }
+  function openInBrowser() {
+    if (!state.url) return;
+    try {
+      if (state.inOffice && Office.context.ui && Office.context.ui.openBrowserWindow && Office.context.requirements && Office.context.requirements.isSetSupported('OpenBrowserWindowApi', '1.1')) {
+        Office.context.ui.openBrowserWindow(state.url); return;
+      }
+    } catch (e) { /* fall back */ }
+    window.open(state.url, '_blank', 'noopener');
+  }
+  function setZoom(z) { state.zoom = Math.max(50, Math.min(200, z)); applyZoom(); save(); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  $('tabPick').onclick = function () { showTab('pick'); };
+  $('tabLink').onclick = function () { showTab('link'); };
+  $('appSel').onchange = pickApp;
+  $('widSel').onchange = pickWidget;
+  $('useBtn').onclick = function () { var L = builtLink(); if (L && !L.bad) use(L.url, L.title); };
+  $('showBtn').onclick = function () { use($('urlIn').value, ''); };
+  $('urlIn').onkeydown = function (e) { if (e.key === 'Enter') use($('urlIn').value, ''); };
+  $('homeBtn').onclick = function () { $('urlIn').value = SITE; use(SITE, 'Visualizers home page'); };
+  $('cancelBtn').onclick = $('cancelBtn2').onclick = function () { if (state.url) showPage(true); };
+  $('changeBtn').onclick = function () { showSetup(true); try { $('appSel').focus(); } catch (e) { /* ignore */ } };
+  $('tabPick').parentNode.addEventListener('keydown', function (e) {   // arrow keys move between the two tabs
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    var toLink = $('tabPick').getAttribute('aria-selected') === 'true';
+    showTab(toLink ? 'link' : 'pick'); (toLink ? $('tabLink') : $('tabPick')).focus(); e.preventDefault();
+  });
+  $('reloadBtn').onclick = showPage;
+  $('retryBtn').onclick = showPage;
+  $('openBtn').onclick = openInBrowser;
+  $('msgOpenBtn').onclick = openInBrowser;
+  $('zoomIn').onclick = function () { setZoom(state.zoom + 10); };
+  $('zoomOut').onclick = function () { setZoom(state.zoom - 10); };
+  window.addEventListener('offline', function () { diag(); });
+  window.addEventListener('online', function () { diag(); if (state.url && $('setup').hidden && !$('msg').hidden) showPage(); });
+
+  /* ---------- editing versus Slide Show ---------- */
+  function setView(v) {
+    state.presenting = (v === 'read');
+    document.body.classList.toggle('presenting', state.presenting);
+    if (!state.url && started) {
+      if (state.presenting) { $('setup').hidden = true; showMessage('No figure on this slide yet', 'Choose one while you edit the slide.'); $('msgBtns').hidden = true; }
+      else { $('msgBtns').hidden = false; showSetup(false); }
+    }
+    tellView(); diag();
+  }
+  function diag() {
+    var t = 'v' + VERSION + ' · ' + (state.inOffice ? (state.host + ' ' + state.platform).trim() : 'browser') +
+            ' · ' + (state.presenting ? 'Slide Show' : 'editing') +
+            ' · Office library ' + (state.officeLoaded ? 'loaded' : 'not loaded') +
+            ' · ' + (navigator.onLine ? 'online' : 'offline') + (state.sw || (navigator.serviceWorker && navigator.serviceWorker.controller) ? ' · offline copies on' : '');
+    $('diagBar').textContent = t; $('diagSetup').textContent = t;
+  }
+
+  /* ---------- offline copies: a small service worker keeps the last version of every page shown ---------- */
+  function startOffline() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      navigator.serviceWorker.register('vz-offline.js', { scope: './' }).then(function () {
+        state.sw = true; diag();
+      }, function () { /* not allowed here: live pages still work */ });
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- start ---------- */
+  function start() {
+    var saved = readSaved();
+    state.url = saved.url; state.zoom = saved.zoom || 100; state.title = saved.title || '';
+    var q = new URLSearchParams(location.search);
+    if (!state.inOffice) {                       // browser testing helpers
+      if (q.get('url')) { var c = checkUrl(q.get('url')); if (!c.error) { state.url = c.url; state.title = ''; } }
+      if (q.get('present') === '1') setView('read');
+    }
+    diag();
+    if (state.url) showPage(); else if (state.presenting) setView('read'); else showSetup(false);
+  }
+  function officeMissing() {   // inside PowerPoint, but its library did not load (usually no internet)
+    started = true;
+    $('setup').hidden = true;
+    showMessage('PowerPoint\'s add-in library did not load', 'This usually means there is no internet connection. Connect, then choose Try again.');
+    $('retryBtn').onclick = function () { location.reload(); };
+  }
+  var started = false;
+  function startOnce() { if (!started) { started = true; start(); } }
+  startOffline();
+  if (IN_POWERPOINT && (typeof Office === 'undefined' || !Office.onReady)) { officeMissing(); return; }
+  if (typeof Office !== 'undefined' && Office.onReady) {
+    state.officeLoaded = true;
+    Office.onReady(function (info) {
+      if (info && info.host) {
+        state.inOffice = true; state.host = String(info.host); state.platform = String(info.platform || '');
+        try {
+          Office.context.document.getActiveViewAsync(function (r) { if (r.status === 'succeeded') setView(r.value); });
+          Office.context.document.addHandlerAsync(Office.EventType.ActiveViewChanged, function (a) { setView(a.activeView); });
+        } catch (e) { /* older PowerPoint */ }
+      }
+      if (started && state.inOffice) start(); else startOnce();
+    });
+    setTimeout(function () { if (IN_POWERPOINT) { if (!started) officeMissing(); } else startOnce(); }, IN_POWERPOINT ? 20000 : 4000);
+  } else {
+    startOnce();
+  }
+})();
+</script>
+</body>
+</html>
